@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: questions
+    // Document ID: auto-generated
+    // Fields:
+    //   - text: string (required, max 500 chars)
+    //   - color: string (required, enum: yellow, pink, blue, green)
+    //   - createdAt: timestamp (required, immutable)
+    //   - authorUid: string (required, immutable)
+    //
+    // Collection: answers
+    // Document ID: auto-generated
+    // Fields:
+    //   - questionId: string (required)
+    //   - text: string (required, max 2000 chars)
+    //   - createdAt: timestamp (required, immutable)
+    //   - sessionId: string (required, max 100 chars)
+    //
+    // Collection: users
+    // Document ID: user uid
+    // Fields:
+    //   - email: string (required, valid email)
+    //   - role: string (required, enum: admin, user)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "carlo.brighina@yam112003.com" && request.auth.token.email_verified == true)
+        );
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidQuestion(data) {
+      return hasOnlyAllowedFields(['text', 'color', 'createdAt', 'authorUid']) &&
+             hasRequiredFields(['text', 'color', 'createdAt', 'authorUid']) &&
+             isValidStringLength('text', 1, 500) &&
+             data.color in ['yellow', 'pink', 'blue', 'green'] &&
+             data.createdAt is timestamp &&
+             data.authorUid is string && data.authorUid.size() > 0;
+    }
+
+    function isValidAnswer(data) {
+      return hasOnlyAllowedFields(['questionId', 'text', 'createdAt', 'sessionId']) &&
+             hasRequiredFields(['questionId', 'text', 'createdAt', 'sessionId']) &&
+             data.questionId is string && data.questionId.size() > 0 &&
+             isValidStringLength('text', 1, 2000) &&
+             data.createdAt is timestamp &&
+             isValidStringLength('sessionId', 1, 100);
+    }
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['email', 'role']) &&
+             hasRequiredFields(['email', 'role']) &&
+             isValidEmail(data.email) &&
+             data.role in ['admin', 'user'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /questions/{questionId} {
+      // Anyone can read questions (to display them on the board)
+      allow read: if true;
+      
+      // Only admins can create questions
+      allow create: if isAdmin() && 
+                    isValidQuestion(request.resource.data) &&
+                    request.resource.data.authorUid == request.auth.uid;
+      
+      // Only admins can update questions, and they can't change the author or creation date
+      allow update: if isAdmin() && 
+                    isValidQuestion(request.resource.data) &&
+                    request.resource.data.authorUid == resource.data.authorUid &&
+                    request.resource.data.createdAt == resource.data.createdAt;
+      
+      // Only admins can delete questions
+      allow delete: if isAdmin();
+    }
+
+    match /answers/{answerId} {
+      // Only admins can read answers
+      allow read: if isAdmin();
+      
+      // Anyone can create an answer (anonymous users)
+      allow create: if isValidAnswer(request.resource.data);
+      
+      // Answers cannot be updated or deleted by anyone (except admins, maybe later, but for now no)
+      allow update, delete: if false;
+    }
+
+    match /users/{userId} {
+      // Users can read their own profile, admins can read all
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Only admins can create users, OR the bootstrap admin can create their own profile
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) &&
+                    (isAdmin() || (isOwner(userId) && request.resource.data.role == 'admin' && request.auth.token.email == "carlo.brighina@yam112003.com" && request.auth.token.email_verified == true));
+      
+      // Only admins can update users
+      allow update: if isAdmin() && isValidUser(request.resource.data);
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+  }
+}

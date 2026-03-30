@@ -1,0 +1,5 @@
+{
+  "name": "Post-it Q&A Board",
+  "description": "A web app where admins create questions displayed as post-its, and anonymous users can leave answers.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,91 @@
+{
+  "entities": {
+    "Question": {
+      "title": "Question",
+      "description": "A question created by an admin, displayed as a post-it.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The text of the question."
+        },
+        "color": {
+          "type": "string",
+          "enum": ["yellow", "pink", "blue", "green"],
+          "description": "The color of the post-it."
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "When the question was created."
+        },
+        "authorUid": {
+          "type": "string",
+          "description": "The UID of the admin who created the question."
+        }
+      },
+      "required": ["text", "color", "createdAt", "authorUid"]
+    },
+    "Answer": {
+      "title": "Answer",
+      "description": "An anonymous answer to a question.",
+      "type": "object",
+      "properties": {
+        "questionId": {
+          "type": "string",
+          "description": "The ID of the question this answer belongs to."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text of the answer."
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "When the answer was submitted."
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "A unique session ID for the anonymous user."
+        }
+      },
+      "required": ["questionId", "text", "createdAt", "sessionId"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the application (admin).",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "user"],
+          "description": "The user's role."
+        }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/questions/{questionId}": {
+      "schema": {
+        "$ref": "#/entities/Question"
+      },
+      "description": "Stores all questions."
+    },
+    "/answers/{answerId}": {
+      "schema": {
+        "$ref": "#/entities/Answer"
+      },
+      "description": "Stores all answers to questions."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profiles and roles."
+    }
+  }
+}

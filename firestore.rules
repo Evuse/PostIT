@@ -98,9 +98,21 @@ service cloud.firestore {
              data.role in ['admin', 'user'];
     }
 
+    function isValidAdminSettings(data) {
+      return hasOnlyAllowedFields(['panelTitle', 'themeColor']) &&
+             hasRequiredFields(['panelTitle', 'themeColor']) &&
+             isValidStringLength('panelTitle', 1, 100) &&
+             isValidStringLength('themeColor', 1, 50);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
+
+    match /settings/{settingId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin() && isValidAdminSettings(request.resource.data);
+    }
 
     match /questions/{questionId} {
       // Anyone can read questions (to display them on the board)

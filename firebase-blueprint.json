@@ -66,6 +66,22 @@
         }
       },
       "required": ["email", "role"]
+    },
+    "AdminSettings": {
+      "title": "Admin Settings",
+      "description": "Customization settings for the admin panel.",
+      "type": "object",
+      "properties": {
+        "panelTitle": {
+          "type": "string",
+          "description": "The title of the admin panel."
+        },
+        "themeColor": {
+          "type": "string",
+          "description": "The primary hex color of the admin panel."
+        }
+      },
+      "required": ["panelTitle", "themeColor"]
     }
   },
   "firestore": {
@@ -86,6 +102,12 @@
         "$ref": "#/entities/User"
       },
       "description": "Stores user profiles and roles."
+    },
+    "/settings/{settingId}": {
+      "schema": {
+        "$ref": "#/entities/AdminSettings"
+      },
+      "description": "Stores admin panel settings."
     }
   }
 }
